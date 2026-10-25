@@ -1,5 +1,6 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
+import { ReceiptSvg } from './ReceiptSvg';
 
 const rasterize = async (svg, content, width) => {
 	await Promise.all([...content.querySelectorAll('img')].map(image => image.decode()));
@@ -60,24 +61,13 @@ export const renderReceiptAsync = async (children, {width = 576} = {}) => {
 	const host = document.createElement('div');
 	host.style = {position: 'fixed', left: -100000, top: 0, opacity: 0, pointerEvents: 'none'};
 	document.body.append(host);
+
 	let root;
 	try {
 		const content = await new Promise((resolve, reject) => {
 			root = createRoot(host, {onUncaughtError: reject});
 			root.render(
-				<svg xmlns="http://www.w3.org/2000/svg" width={width}>
-					<foreignObject width={width}>
-						<div
-							ref={resolve}
-							xmlns="http://www.w3.org/1999/xhtml"
-							style={{
-								display: 'flow-root', width, background: '#fff', color: '#000',
-								fontFamily: 'system-ui, sans-serif', fontSize: 26,
-							}}
-							children={children}
-						/>
-					</foreignObject>
-				</svg>,
+				<ReceiptSvg width={width} contentRef={resolve} children={children}/>,
 			);
 		});
 		return await rasterize(host.firstElementChild, content, width);

@@ -1,30 +1,31 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { toast } from 'meteor/poon';
 import { renderReceiptAsync } from './render-receipt';
+import { ReceiptSvg } from './ReceiptSvg';
 
-export const ReceiptPreview = ({children, width = 576, isCanvas}) => {
+export const ReceiptPreview = ({children, width = 576, padding = 10, showRasterized}) => {
 	const [height, setHeight] = useState(0);
-	const el = useRef();
+	const canvasEl = useRef();
 
 	useEffect(() => {
-		if (!isCanvas) return;
-		let cancelled = false;
-		renderReceiptAsync(children, {width}).then(({pixels, bitmap}) => {
-			if (cancelled) return;
-			el.current.height = bitmap.height;
-			el.current.getContext('2d').putImageData(pixels, 0, 0);
+		if (canvasEl.current) renderReceiptAsync(children, {width}).then(({pixels, bitmap}) => {
+			canvasEl.current.height = bitmap.height;
+			canvasEl.current.getContext('2d').putImageData(pixels, 0, 0);
 		}).catch(err => {
-			if (!cancelled) toast(err.toString());
+			toast(err.toString());
 		});
-		return () => {
-			cancelled = true;
-		};
-	}, [isCanvas, children, width]);
+	}, [showRasterized, children, width]);
 
-	const style = {width: width / 2};
+	const elWidth = (width / 2) + (padding * 2); // element width with border
+	const elHeight = (height / 2) + (padding * 2); // element width with border
 
-	if (isCanvas) return (
-		<canvas ref={el} className="receipt-preview" width={width} style={style}/>
+	if (showRasterized) return (
+		<canvas
+			ref={canvasEl}
+			className="receipt-preview"
+			width={width}
+			style={{width: elWidth, height: elHeight}}
+		/>
 	);
 
 	const onRenderSvg = el => {
@@ -32,24 +33,15 @@ export const ReceiptPreview = ({children, width = 576, isCanvas}) => {
 	};
 
 	return (
-		<svg
-			xmlns="http://www.w3.org/2000/svg"
+		<ReceiptSvg
 			className="receipt-preview"
 			width={width}
 			height={height}
-			style={{width, overflow: 'visible', zoom: .5}}
-		>
-			<foreignObject width={width} height="100%" style={{overflow: 'visible'}}>
-				<div
-					ref={onRenderSvg}
-					xmlns="http://www.w3.org/1999/xhtml"
-					style={{
-						display: 'flow-root', width, background: '#fff', color: '#000',
-						fontFamily: 'system-ui, sans-serif', fontSize: 26,
-					}}
-					children={children}
-				/>
-			</foreignObject>
-		</svg>
+			style={{width: elWidth, height: elHeight}}
+			preserveAspectRatio="xMidYMid meet"
+			viewBox={`0 0 ${width} ${height}`}
+			contentRef={onRenderSvg}
+			children={children}
+		/>
 	);
 };
